@@ -210,44 +210,9 @@
 </head>
 <body>
 
-<!-- NAME MODAL -->
-<div id="name-modal" class="overlay">
-  <div class="modal-box">
-    <div class="micon">⚖️</div>
-    <h2>Legal Translation</h2>
-    <p class="msub">سجّل اسمك لتتبع وقتك ونتائجك في لوحة المتصدرين<br><small style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:#9ca3af">(اختياري)</small></p>
-    <input class="modal-input" type="text" id="student-name-input" placeholder="اسمك" maxlength="40" autocomplete="off" />
-    <div class="mbtn-row">
-      <button class="mbtn ghost" onclick="skipName()">تخطي</button>
-      <button class="mbtn primary" onclick="startWithName()">ابدأ</button>
-    </div>
-  </div>
-</div>
-
-<!-- ADMIN MODAL -->
-<div id="admin-modal" class="overlay hidden">
-  <div class="modal-box">
-    <div class="micon">🔐</div>
-    <h2>Admin</h2>
-    <p class="msub">أدخل كلمة السر لمسح بيانات المتصدرين</p>
-    <input class="modal-input" type="password" id="admin-pwd-input" placeholder="كلمة السر" autocomplete="off" />
-    <div class="mbtn-row">
-      <button class="mbtn ghost" onclick="closeAdminModal()">إلغاء</button>
-      <button class="mbtn primary" onclick="confirmAdminClear()">تأكيد المسح</button>
-    </div>
-    <p id="admin-error" style="color:var(--red);font-family:'Amiri',serif;font-size:0.9rem;margin-top:0.65rem;display:none">كلمة السر غلط ❌</p>
-  </div>
-</div>
-
 <!-- HEADER -->
 <header>
-  <div class="header-title">Legal Translation ⚖️</div>
-  <div id="exam-status">
-    <span class="exam-name-tag" id="status-name">زائر</span>
-    <span class="exam-timer" id="session-timer">00:00</span>
-    <button class="hbtn end" id="end-btn" onclick="endSession()" style="display:none">إنهاء</button>
-    <button class="hbtn reg" id="start-btn-sm" onclick="openNameModal()">سجّل</button>
-  </div>
+  <div class="header-title">Legal Translation ⚖️ </div>
 </header>
 
 <!-- NAV -->
@@ -620,7 +585,6 @@ renderGlossary();
 renderLaws();
 renderSentences();
 renderFlashcard();
-renderLeaderboard();
 </script>
 </body>
 </html>
