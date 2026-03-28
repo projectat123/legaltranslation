@@ -131,6 +131,16 @@
   .flashcard-nav { display: flex; align-items: center; justify-content: center; gap: 0.72rem; margin-bottom: 0.72rem; flex-wrap: wrap; }
   .fc-counter { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--muted); direction: ltr; min-width: 50px; text-align: center; }
 
+  /* === QUIZ SETUP === */
+  .src-btn, .dir-btn {
+    font-family: 'Amiri', serif; font-size: 0.9rem; padding: 0.5rem 0.9rem;
+    border: 2px solid var(--border-strong); border-radius: 8px; background: white;
+    color: var(--ink); cursor: pointer; transition: all 0.15s; direction: rtl;
+  }
+  .src-btn:hover, .dir-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .src-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
+  .dir-btn.active { background: var(--ink); border-color: var(--ink); color: white; font-weight: 700; }
+
   /* === QUIZ === */
   .quiz-wrapper { max-width: 680px; margin: 0 auto; }
   .quiz-controls { display: flex; gap: 0.52rem; margin-bottom: 1.05rem; flex-wrap: wrap; }
@@ -316,14 +326,25 @@
   <div id="quiz" class="section">
     <h2 class="section-title">🎯 اختبر نفسك</h2>
     <div class="quiz-wrapper">
-      <div class="quiz-controls">
-        <button class="btn" onclick="startQuiz('ar2en')">عربي → إنجليزي</button>
-        <button class="btn secondary" onclick="startQuiz('en2ar')">إنجليزي → عربي</button>
-        <button class="btn secondary" onclick="startQuiz('sentence')">ترجمة جمل</button>
+      <div id="quiz-setup">
+        <div style="font-family:'Amiri',serif;font-size:1rem;color:var(--muted);margin-bottom:0.7rem;direction:rtl">① اختر المحتوى:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-bottom:1.1rem" id="source-btns">
+          <button class="src-btn active" data-src="glossary">📖 المصطلحات الأساسية</button>
+          <button class="src-btn" data-src="laws">⚖️ فروع القانون</button>
+          <button class="src-btn" data-src="sentences">📝 الجمل</button>
+          <button class="src-btn" data-src="latin">🏛️ لاتيني</button>
+          <button class="src-btn" data-src="extra">➕ مصطلحات إضافية</button>
+          <button class="src-btn" data-src="legalese">📜 Legalese</button>
+          <button class="src-btn" data-src="all">🌐 الكل</button>
+        </div>
+        <div style="font-family:'Amiri',serif;font-size:1rem;color:var(--muted);margin-bottom:0.7rem;direction:rtl">② اختر الاتجاه:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-bottom:1.4rem" id="dir-btns">
+          <button class="dir-btn active" data-dir="en2ar">إنجليزي ← عربي</button>
+          <button class="dir-btn" data-dir="ar2en">عربي ← إنجليزي</button>
+        </div>
+        <button class="btn" style="width:100%;padding:0.85rem;font-size:0.9rem" onclick="startQuizFromSetup()">🚀 ابدأ الاختبار</button>
       </div>
-      <div id="quiz-area">
-        <div style="text-align:center;padding:2rem;font-family:'Amiri',serif;font-size:1.08rem;color:var(--muted)">اختر نوع الاختبار أعلاه لتبدأ ✦</div>
-      </div>
+      <div id="quiz-area" style="display:none"></div>
     </div>
   </div>
 
@@ -715,29 +736,139 @@ function shuffleCards(){
   fcIdx=0; renderFlashcard();
 }
 
-// ===== QUIZ =====
-let qMode='', qItems=[], qIdx=0, qScore=0, qAnswered=false, qLog=[], quizStartTime=null;
+// ===== QUIZ SETUP =====
+let qSrc='glossary', qDir='en2ar';
 
-function startQuiz(mode){
+// Build latin and extra datasets from DOM tables at runtime
+function buildLatinData(){
+  // Use hardcoded arrays matching the latin section
+  return [
+    {en:"Ab initio",ar:"من البداية"},{en:"Ad hoc",ar:"مخصصة لـ"},
+    {en:"Alibi",ar:"دليل دامغ على عدم وجود الشخص (دليل غياب)"},{en:"Bona fide",ar:"حسن نية / بحسن نية"},
+    {en:"Ipso facto",ar:"بناء على الحقيقة السابقة / بناء على ما سبق"},{en:"In status quo",ar:"الوضع الراهن"},
+    {en:"Actori incumbit onus probandi",ar:"البينة على من ادعى"},{en:"Pacta sunt servanda",ar:"العقد شريعة المتعاقدين"},
+    {en:"Nullum crimen nulla poena sine lege",ar:"لا جريمة ولا عقوبة إلا بنص"},{en:"In presentia",ar:"حضوريا"},
+    {en:"Inter alios",ar:"ضمن (آخرين)"},{en:"Ex post facto",ar:"بأثر رجعي"},
+    {en:"Laissez faire",ar:"حرية العمل"},{en:"Bona gratia",ar:"طواعية"},
+    {en:"Res judicata",ar:"الأمر المقضي به"},{en:"En masse",ar:"كليا / إجمالا"},
+    {en:"Per diem",ar:"يوميا"},{en:"Per se",ar:"في حد ذاته"},
+    {en:"Persona grata",ar:"شخص مرغوب فيه"},{en:"Persona non grata",ar:"شخص غير مرغوب فيه"},
+    {en:"Prima facie",ar:"لأول وهلة"},{en:"Pro rata",ar:"بنسبة مئوية"},
+    {en:"Regime",ar:"نظام"},{en:"Sabotage",ar:"تخريب"},
+    {en:"Sine die",ar:"إلى أجل غير مسمى"},{en:"Sub conditione",ar:"بشرط / تحت شرط"},
+    {en:"Vice versa",ar:"العكس بالعكس"},{en:"Nunc pro tunc",ar:"الآن (لينفذ) في وقت آخر"},
+  ];
+}
+function buildExtraData(){
+  return [
+    {en:"sole proprietorship",ar:"منشأة فردية"},{en:"special (limited) partnership",ar:"شركة توصية بسيطة"},
+    {en:"partnership limited by shares",ar:"شركة توصية بالأسهم"},{en:"holding company",ar:"شركة قابضة"},
+    {en:"joint venture",ar:"مشروع مشترك"},{en:"stock record",ar:"سجل الأسهم"},
+    {en:"nominal (par) value of share",ar:"القيمة الاسمية للسهم"},{en:"vote by proxy",ar:"التصويت بالوكالة"},
+    {en:"minutes of meeting",ar:"محضر الاجتماع"},{en:"civil sanctions",ar:"عقوبات مدنية"},
+    {en:"moral rules",ar:"قواعد أخلاقية"},{en:"rules of religion",ar:"قواعد دينية"},
+    {en:"code",ar:"لائحة (مجموعة قوانين)"},{en:"conduct",ar:"سلوك"},{en:"right",ar:"حق"},
+    {en:"pecuniary right",ar:"حق مالي"},{en:"real right",ar:"حق أصلي"},
+    {en:"civil rights",ar:"حقوق مدنية"},{en:"political rights",ar:"حقوق سياسية"},
+    {en:"human rights",ar:"حقوق الإنسان"},{en:"public rights",ar:"حقوق عامة"},
+    {en:"private rights",ar:"حقوق خاصة"},{en:"personal rights",ar:"حقوق شخصية"},
+    {en:"juristic person",ar:"شخص — صفة اعتبارية"},{en:"obligations",ar:"واجبات"},
+    {en:"status",ar:"وضع"},{en:"movable things",ar:"أشياء منقولة"},
+    {en:"immovable things",ar:"أشياء غير منقولة"},{en:"sources of law",ar:"مصادر القانون"},
+    {en:"public person",ar:"شخص عام (الدولة أو أي من هيئاتها)"},
+    {en:"private person",ar:"شخص عادي (شركة أو مؤسسة خاصة)"},
+    {en:"rule of law",ar:"سيادة القانون"},{en:"sanctioned",ar:"مدعم بجزاءات"},
+    {en:"divine rules",ar:"قواعد إلهية"},{en:"law of taxation",ar:"قانون الضرائب"},
+    {en:"law of criminal procedures",ar:"قانون الإجراءات الجنائية"},
+    {en:"commercial maritime law",ar:"القانون التجاري البحري"},
+    {en:"infancy (doli in capax)",ar:"دون سن المساءلة"},{en:"drunkenness",ar:"السكر"},
+    {en:"ignorance (or mistake)",ar:"الجهل بالقانون"},{en:"coercion (duress)",ar:"الإكراه"},
+    {en:"loss of memory",ar:"فقدان الذاكرة"},{en:"uncontrollable impulse",ar:"عدم التحكم في النفس"},
+    {en:"treason",ar:"خيانة"},{en:"sedition",ar:"تحريض على الفتنة"},
+    {en:"constitution",ar:"دستور"},{en:"power of attorney",ar:"توكيل"},
+  ];
+}
+function buildLegaleseData(){
+  return [
+    {en:"Hereby",ar:"بموجب هذا العقد"},{en:"Hereto",ar:"الملحق المرفق بهذا العقد"},
+    {en:"Hereof",ar:"شرط التعويضات الوارد في هذا العقد"},{en:"Herein",ar:"البيان الموضح في هذا العقد"},
+    {en:"Hereinafter",ar:"المشار إليه في هذا العقد بعد ذلك"},{en:"Hereinbefore",ar:"المنصوص عليه في هذا القانون قبل ذلك"},
+    {en:"Herewith",ar:"العقد والترجمة المحفوظة معه"},{en:"Thereby",ar:"بموجب ذلك المذكور"},
+    {en:"Thereto",ar:"الملحق المرفق بذلك العقد"},{en:"Thereof",ar:"أي جزء من ذلك الاقرار"},
+    {en:"Therein",ar:"الموجودة في ذلك المبنى"},{en:"Therefrom",ar:"الأرباح الناتجة عنه"},
+    {en:"Thereinafter",ar:"الواردة في ذلك العقد بعد ذلك"},{en:"Thereunder",ar:"وفقا لذلك العقد"},
+    {en:"Whereupon",ar:"فلهذه الأسباب / وبناء عليه"},
+    {en:"undertake",ar:"يتعهد"},{en:"prior to",ar:"قبل"},{en:"expire",ar:"ينتهي / ينقضي"},
+    {en:"at all times",ar:"في أي وقت / دوما على الدوام"},{en:"inasmuch as",ar:"فيما يخص / فيما يتعلق بـ"},
+    {en:"by and between",ar:"تحرر هذا العقد بين كلا من"},{en:"in full force and effect",ar:"ساري / نافذ في السريان"},
+    {en:"null and void",ar:"باطل / ملغى"},{en:"power and authority",ar:"السلطة / الصلاحية"},
+    {en:"in witness whereof",ar:"إثباتا لما تقدم / شهادة منا على ذلك"},
+    {en:"without prejudice to",ar:"دون الإخلال بـ / دون المساس بـ"},
+    {en:"unless otherwise provided herein",ar:"مالم ينص على خلاف ذلك"},
+    {en:"including without limitation",ar:"على سبيل المثال لا الحصر"},
+    {en:"consideration",ar:"محل العقد / المقابل / العِوَض"},
+    {en:"fine (criminal law)",ar:"الغرامة"},{en:"custody (criminal)",ar:"احتجاز / وضع المتهم في الحجز"},
+    {en:"custody (family law)",ar:"حضانة الطفل / رعاية طفل"},
+  ];
+}
+function buildLawsData(){
+  return laws.map(l=>({en:l.en, ar:l.ar}));
+}
+function getDataset(src){
+  if(src==='glossary') return [...glossary];
+  if(src==='sentences') return [...sentences];
+  if(src==='laws') return buildLawsData();
+  if(src==='latin') return buildLatinData();
+  if(src==='extra') return buildExtraData();
+  if(src==='legalese') return buildLegaleseData();
+  if(src==='all') return [...glossary, ...buildLatinData(), ...buildExtraData(), ...buildLegaleseData(), ...buildLawsData()];
+  return [...glossary];
+}
+
+document.querySelectorAll('.src-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.src-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    qSrc=b.dataset.src;
+  });
+});
+document.querySelectorAll('.dir-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.dir-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    qDir=b.dataset.dir;
+  });
+});
+
+function startQuizFromSetup(){
+  document.getElementById('quiz-setup').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  startQuiz(qDir, qSrc);
+}
+
+// ===== QUIZ ENGINE =====
+let qMode='', qPool=[], qItems=[], qIdx=0, qScore=0, qAnswered=false, qLog=[], quizStartTime=null;
+
+function startQuiz(mode, src){
   qMode=mode; qScore=0; qIdx=0; qLog=[];
   quizStartTime=Date.now();
-  qItems=(mode==='sentence'?[...sentences]:[...glossary]).sort(()=>Math.random()-0.5);
+  qPool=getDataset(src||qSrc);
+  qItems=[...qPool].sort(()=>Math.random()-0.5);
   renderQ();
 }
 
 function getPool(item){
+  const isAr = qMode==='en2ar';
   let correct, pool;
-  const isAr = qMode==='en2ar'||qMode==='sentence';
   if(qMode==='ar2en'){
     correct=item.en;
-    pool=glossary.filter(g=>g.en!==item.en).sort(()=>Math.random()-0.5).slice(0,3).map(g=>g.en);
-  } else if(qMode==='en2ar'){
-    correct=item.ar;
-    pool=glossary.filter(g=>g.ar!==item.ar).sort(()=>Math.random()-0.5).slice(0,3).map(g=>g.ar);
+    pool=qPool.filter(g=>g.en!==item.en).sort(()=>Math.random()-0.5).slice(0,3).map(g=>g.en);
   } else {
     correct=item.ar;
-    pool=sentences.filter(s=>s.ar!==item.ar).sort(()=>Math.random()-0.5).slice(0,3).map(s=>s.ar);
+    pool=qPool.filter(g=>g.ar!==item.ar).sort(()=>Math.random()-0.5).slice(0,3).map(g=>g.ar);
   }
+  // pad if not enough options
+  while(pool.length<3) pool.push('—');
   return {correct, options:[correct,...pool].sort(()=>Math.random()-0.5), isAr};
 }
 
@@ -748,13 +879,14 @@ function renderQ(){
   const qClass = qMode==='ar2en'?'ar':'en';
   const qText  = qMode==='ar2en'?item.ar:item.en;
   const {correct,options,isAr}=getPool(item);
-  // stash for review
   item._correct=correct; item._qText=qText; item._qClass=qClass; item._isAr=isAr;
 
   document.getElementById('quiz-area').innerHTML=`
     <div class="quiz-card">
       <div>
-        <div class="quiz-progress">${qIdx+1} / ${qItems.length} &nbsp;·&nbsp; نتيجتك: ${qScore}</div>
+        <div class="quiz-progress">${qIdx+1} / ${qItems.length} &nbsp;·&nbsp; نتيجتك: ${qScore}
+          <span style="float:left;cursor:pointer;color:var(--muted)" onclick="backToSetup()">✕ إنهاء</span>
+        </div>
         <div class="quiz-question ${qClass}">${qText}</div>
         <div class="quiz-options">
           ${options.map(o=>`<button class="quiz-option ${isAr?'':'en-opt'}"
@@ -770,19 +902,22 @@ function renderQ(){
     </div>`;
 }
 
+function backToSetup(){
+  document.getElementById('quiz-setup').style.display='block';
+  document.getElementById('quiz-area').style.display='none';
+  document.getElementById('quiz-area').innerHTML='';
+}
+
 function checkAns(btn){
   if(qAnswered) return;
   qAnswered=true;
   const sel=decodeURIComponent(btn.getAttribute('data-val'));
   const cor=decodeURIComponent(btn.getAttribute('data-correct'));
   const fb=document.getElementById('qfb');
-
-  // Disable all, mark only the correct one green
   document.querySelectorAll('.quiz-option').forEach(b=>{
     b.disabled=true;
     if(decodeURIComponent(b.getAttribute('data-val'))===cor) b.classList.add('correct');
   });
-
   const ok = sel===cor;
   if(ok){
     qScore++;
@@ -794,7 +929,6 @@ function checkAns(btn){
     fb.textContent='الإجابة الصحيحة محددة بالأخضر';
     fb.className='quiz-feedback wrong';
   }
-
   const item=qItems[qIdx];
   qLog.push({qText:item._qText, qClass:item._qClass, correct:cor, userAns:sel, ok, isAr:item._isAr});
   document.getElementById('qnext').style.display='block';
@@ -806,7 +940,6 @@ function showScore(){
   const pct=Math.round((qScore/qItems.length)*100);
   const msg=pct>=80?'ممتاز! 🎉':pct>=60?'جيد! حاول مرة أخرى 💪':'تحتاج للمراجعة أكثر 📚';
   const quizDur=quizStartTime?Math.floor((Date.now()-quizStartTime)/1000):0;
-
   document.getElementById('quiz-area').innerHTML=`
     <div class="quiz-card" style="min-height:auto">
       <div class="score-display">
@@ -815,8 +948,8 @@ function showScore(){
         <div style="margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:var(--muted);direction:ltr">⏱ ${fmt(quizDur)}</div>
         <div style="margin-top:0.4rem;font-family:'Amiri',serif;font-size:1.12rem;color:var(--gold)">${msg}</div>
         <div style="margin-top:1.1rem;display:flex;gap:0.65rem;justify-content:center;flex-wrap:wrap">
-          <button class="btn" onclick="startQuiz('${qMode}')">إعادة الاختبار</button>
-          <button class="btn secondary" onclick="startQuiz('en2ar')">نوع آخر</button>
+          <button class="btn" onclick="startQuiz(qMode,qSrc)">إعادة الاختبار</button>
+          <button class="btn secondary" onclick="backToSetup()">اختيار آخر</button>
         </div>
       </div>
     </div>
