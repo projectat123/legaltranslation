@@ -334,7 +334,7 @@
       <tbody>
         <tr>
           <td class="num-cell">10</td><td class="term-en">plaintiff</td>
-          <td class="term-ar">المدعي</td><td class="term-ar">المدعي ✓</td>
+          <td class="term-ar">المدعي</td><td class="term-ar">x</td>
         </tr>
         <tr>
           <td class="num-cell">11</td><td class="term-en">defendant</td>
@@ -365,16 +365,7 @@
     </div>
   </div>
 
-  <!-- LEADERBOARD -->
-  <div id="leaderboard" class="section">
-    <h2 class="section-title">🏆 لوحة المتصدرين</h2>
-    <div class="lb-stats-row" id="lb-stats"></div>
-    <div id="lb-table-wrapper"></div>
-    <div class="lb-actions">
-      <button class="btn secondary" onclick="renderLeaderboard()">🔄 تحديث</button>
-      <button class="btn" style="background:var(--red);border-color:var(--red)" onclick="openAdminModal()">🗑️ مسح (Admin)</button>
-    </div>
-  </div>
+  
 
 </main>
 
@@ -433,92 +424,6 @@ const sentences = [
   {n:14, en:"An invalid reservation shall be considered null and void",              ar:"يعتبر الحجز غير الصحيح باطلاً ولاغياً"},
   {n:15, en:"The defendant was convicted and he is now serving a life sentence",     ar:"أدين المتهم ويقضي الآن عقوبة السجن المؤبد"},
 ];
-
-// ===== SESSION =====
-let sessionName='', sessionStartTime=null, sessionTimerInterval=null, sessionBestScore=0;
-
-function fmt(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-
-function openNameModal(){ document.getElementById('name-modal').classList.remove('hidden'); }
-
-function startWithName(){
-  const v = document.getElementById('student-name-input').value.trim();
-  sessionName = v||'زائر';
-  document.getElementById('name-modal').classList.add('hidden');
-  beginSession();
-}
-function skipName(){
-  sessionName='زائر';
-  document.getElementById('name-modal').classList.add('hidden');
-  beginSession();
-}
-function beginSession(){
-  sessionStartTime=Date.now(); sessionBestScore=0;
-  document.getElementById('status-name').textContent=sessionName;
-  document.getElementById('end-btn').style.display='inline-block';
-  document.getElementById('start-btn-sm').style.display='none';
-  clearInterval(sessionTimerInterval);
-  sessionTimerInterval=setInterval(()=>{
-    document.getElementById('session-timer').textContent=fmt(Math.floor((Date.now()-sessionStartTime)/1000));
-  },1000);
-}
-function endSession(){
-  if(!sessionStartTime) return;
-  const dur=Math.floor((Date.now()-sessionStartTime)/1000);
-  clearInterval(sessionTimerInterval);
-  if(sessionName&&sessionName!=='زائر') saveToLeaderboard(sessionName,dur,sessionBestScore);
-  sessionName=''; sessionStartTime=null; sessionBestScore=0;
-  document.getElementById('session-timer').textContent='00:00';
-  document.getElementById('status-name').textContent='زائر';
-  document.getElementById('end-btn').style.display='none';
-  document.getElementById('start-btn-sm').style.display='inline-block';
-  document.getElementById('student-name-input').value='';
-  openNameModal();
-}
-
-// ===== ADMIN =====
-const ADMIN_PWD='anything123';
-function openAdminModal(){ document.getElementById('admin-modal').classList.remove('hidden'); document.getElementById('admin-pwd-input').value=''; document.getElementById('admin-error').style.display='none'; }
-function closeAdminModal(){ document.getElementById('admin-modal').classList.add('hidden'); }
-function confirmAdminClear(){
-  if(document.getElementById('admin-pwd-input').value===ADMIN_PWD){
-    localStorage.removeItem(LB_KEY); closeAdminModal(); renderLeaderboard();
-  } else { document.getElementById('admin-error').style.display='block'; }
-}
-
-// ===== LEADERBOARD =====
-const LB_KEY='legal_lb_v3';
-function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||'[]');}catch(e){return[];} }
-function saveLB(d){ try{localStorage.setItem(LB_KEY,JSON.stringify(d));}catch(e){} }
-function saveToLeaderboard(name,dur,score){
-  const lb=loadLB();
-  lb.push({name,duration:dur,score,date:new Date().toLocaleDateString('ar-EG'),ts:Date.now()});
-  lb.sort((a,b)=>b.score-a.score||a.duration-b.duration);
-  saveLB(lb);
-}
-function renderLeaderboard(){
-  const lb=loadLB();
-  const stats=document.getElementById('lb-stats');
-  const wrap=document.getElementById('lb-table-wrapper');
-  if(lb.length){
-    const avg=Math.round(lb.reduce((s,e)=>s+e.duration,0)/lb.length);
-    stats.innerHTML=`
-      <div class="lb-stat-card"><div class="lb-stat-num">${lb.length}</div><div class="lb-stat-label">جلسة مراجعة</div></div>
-      <div class="lb-stat-card"><div class="lb-stat-num">${fmt(avg)}</div><div class="lb-stat-label">متوسط الوقت</div></div>
-      <div class="lb-stat-card"><div class="lb-stat-num">${lb[0].score}</div><div class="lb-stat-label">أعلى نتيجة</div></div>`;
-  } else { stats.innerHTML=''; }
-  if(!lb.length){ wrap.innerHTML='<div class="lb-empty">لا توجد بيانات بعد 📚<br><small>أتمم اختبار وأنهِ الجلسة لتظهر هنا</small></div>'; return; }
-  const icons=['🥇','🥈','🥉'], cls=['gold','silver','bronze'];
-  wrap.innerHTML=`<table class="data-table">
-    <thead><tr><th>#</th><th style="direction:rtl">الاسم</th><th>النتيجة</th><th>مدة الجلسة</th><th>التاريخ</th></tr></thead>
-    <tbody>${lb.map((e,i)=>`<tr class="${i<3?'rank-'+(i+1):''}">
-      <td><span class="rank-badge ${cls[i]||''}">${icons[i]||(i+1)}</span></td>
-      <td class="lb-name-cell">${e.name}</td>
-      <td class="lb-score-cell">${e.score}</td>
-      <td class="lb-time-cell">${fmt(e.duration)}</td>
-      <td class="lb-date-cell">${e.date}</td>
-    </tr>`).join('')}</tbody></table>`;
-}
 
 // ===== RENDER =====
 function renderGlossary(){
