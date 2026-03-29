@@ -65,6 +65,61 @@
   nav button:hover { color: white; background: rgba(255,255,255,0.05); }
   nav button.active { color: var(--gold-light); border-bottom-color: var(--gold-light); }
 
+  /* hamburger — hidden on desktop */
+  #nav-toggle { display: none; }
+  #nav-overlay { display: none; }
+
+  @media (max-width: 640px) {
+    /* hide horizontal scrolling nav on mobile */
+    nav { display: none; overflow: visible; position: static; border-bottom: none; }
+    nav.mobile-open {
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(78vw, 270px); z-index: 200;
+      background: var(--nav-bg); border-left: 2px solid var(--gold);
+      overflow-y: auto; padding-top: 3.5rem;
+      animation: slideIn 0.25s ease;
+      box-shadow: -6px 0 24px rgba(0,0,0,0.35);
+    }
+    @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+    nav.mobile-open button {
+      width: 100%; text-align: right; padding: 0.9rem 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06); border-right: none;
+      font-size: 1rem;
+    }
+    nav.mobile-open button.active {
+      background: rgba(201,146,42,0.15); border-right: 4px solid var(--gold-light);
+      color: var(--gold-light);
+    }
+    /* close X inside drawer */
+    #nav-close-btn {
+      position: absolute; top: 0.75rem; left: 0.85rem;
+      background: none; border: none; color: #9ca3af;
+      font-size: 1.4rem; cursor: pointer; padding: 0.2rem 0.5rem;
+      line-height: 1;
+    }
+    /* dim overlay */
+    #nav-overlay {
+      display: none; position: fixed; inset: 0; z-index: 199;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+    }
+    #nav-overlay.open { display: block; }
+    /* hamburger button in header */
+    #nav-toggle {
+      display: flex; flex-direction: column; justify-content: center; gap: 4px;
+      background: var(--nav-bg); border: none; border-radius: 7px;
+      padding: 0.38rem 0.5rem; cursor: pointer; flex-shrink: 0;
+    }
+    #nav-toggle span {
+      display: block; width: 20px; height: 2px;
+      background: var(--gold-light); border-radius: 2px;
+      transition: all 0.22s;
+    }
+    #nav-toggle.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    #nav-toggle.open span:nth-child(2) { opacity: 0; }
+    #nav-toggle.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  }
+
   /* === MAIN === */
   main { max-width: 960px; margin: 0 auto; padding: 1.1rem 0.85rem 5rem; }
   .section { display: none; animation: fadeIn 0.3s ease; }
@@ -201,7 +256,6 @@
   /* === RESPONSIVE === */
   @media (max-width: 600px) {
     header { padding: 0.65rem 0.85rem; }
-    nav { top: 52px; }
     main { padding: 0.9rem 0.55rem 5rem; }
     .flashcard-container { height: 162px; }
     .law-card-header { flex-direction: column; }
@@ -209,12 +263,10 @@
     #exam-status { padding: 0.32rem 0.6rem; gap: 0.42rem; }
     .exam-name-tag { max-width: 85px; }
     .quiz-options { grid-template-columns: 1fr; }
-    .lb-stats-row { flex-direction: row; }
-  }
-  @media (max-width: 400px) {
-    nav button { font-size: 0.76rem; padding: 0.58rem 0.65rem; }
+    .data-table { font-size: 0.88rem; }
     .data-table td { padding: 0.42rem 0.55rem; }
     .header-title { font-size: 0.88rem; }
+    .src-btn, .dir-btn { font-size: 0.82rem; padding: 0.42rem 0.7rem; }
   }
 </style>
 </head>
@@ -251,17 +303,35 @@
 
 <!-- HEADER -->
 <header>
-  <div class="header-title">Legal Translation ⚖️</div>
-  <div id="exam-status">
-    <span class="exam-name-tag" id="status-name">زائر</span>
-    <span class="exam-timer" id="session-timer">00:00</span>
-    <button class="hbtn end" id="end-btn" onclick="endSession()" style="display:none">إنهاء</button>
-    <button class="hbtn reg" id="start-btn-sm" onclick="openNameModal()">سجّل</button>
+  <div style="display:flex;align-items:center;gap:0.6rem">
+    <button id="nav-toggle" onclick="toggleMobileNav()" aria-label="القائمة">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="header-title">Legal Translation ⚖️</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap">
+    <div id="visitor-badge" title="إجمالي الزيارات" style="
+      display:flex;align-items:center;gap:0.3rem;
+      font-family:'IBM Plex Mono',monospace;font-size:0.7rem;
+      color:var(--muted);background:var(--cream);
+      border:1px solid var(--border);border-radius:6px;
+      padding:0.18rem 0.52rem;cursor:default;flex-shrink:0;
+    ">👁 <span id="visitor-count">—</span></div>
+    <div id="exam-status">
+      <span class="exam-name-tag" id="status-name">زائر</span>
+      <span class="exam-timer" id="session-timer">00:00</span>
+      <button class="hbtn end" id="end-btn" onclick="endSession()" style="display:none">إنهاء</button>
+      <button class="hbtn reg" id="start-btn-sm" onclick="openNameModal()">سجّل</button>
+    </div>
   </div>
 </header>
 
+<!-- MOBILE NAV OVERLAY -->
+<div id="nav-overlay" onclick="closeMobileNav()"></div>
+
 <!-- NAV -->
-<nav>
+<nav id="main-nav">
+  <button id="nav-close-btn" onclick="closeMobileNav()" aria-label="إغلاق">✕</button>
   <button class="active" onclick="showSection('glossary')">📖 المصطلحات</button>
   <button onclick="showSection('laws')">⚖️ فروع القانون</button>
   <button onclick="showSection('sentences')">📝 الجمل</button>
@@ -714,8 +784,9 @@ function showSection(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   const ids=['glossary','laws','sentences','legalese','latin','extra','flashcards','quiz','notes'];
-  document.querySelectorAll('nav button').forEach((b,i)=>b.classList.toggle('active',ids[i]===id));
+  document.querySelectorAll('nav button:not(#nav-close-btn)').forEach((b,i)=>b.classList.toggle('active',ids[i]===id));
   if(id==='flashcards') renderFlashcard();
+  closeMobileNav();
 }
 
 // ===== FLASHCARDS =====
@@ -984,11 +1055,79 @@ function buildReview(){
   }).join('');
 }
 
+// ===== MOBILE NAV =====
+function toggleMobileNav(){
+  const nav=document.getElementById('main-nav');
+  const btn=document.getElementById('nav-toggle');
+  const ovl=document.getElementById('nav-overlay');
+  const isOpen=nav.classList.contains('mobile-open');
+  if(isOpen){ closeMobileNav(); } else {
+    nav.classList.add('mobile-open');
+    btn.classList.add('open');
+    ovl.classList.add('open');
+    document.body.style.overflow='hidden';
+  }
+}
+function closeMobileNav(){
+  document.getElementById('main-nav').classList.remove('mobile-open');
+  document.getElementById('nav-toggle').classList.remove('open');
+  document.getElementById('nav-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ===== VISITOR COUNTER (Supabase Edge Function) =====
+const COUNTER_URL = 'https://yjwybfdcassfirihccub.supabase.co/functions/v1/visitor-counter';
+
+async function initVisitorCounter(){
+  const el    = document.getElementById('visitor-count');
+  const badge = document.getElementById('visitor-badge');
+
+  // Method 1: standard fetch (works when hosted on a server)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(COUNTER_URL, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const count = typeof json.count === 'number' ? json.count : json.count ?? json;
+    el.textContent = Number(count).toLocaleString('en');
+    return;
+  } catch(e) {
+    // fall through to method 2
+  }
+
+  // Method 2: JSONP-style via script tag (works from file://)
+  try {
+    await new Promise((resolve, reject) => {
+      window.__visitorCB = (data) => {
+        const count = data?.count ?? data;
+        el.textContent = Number(count).toLocaleString('en');
+        resolve();
+      };
+      const s = document.createElement('script');
+      s.src = COUNTER_URL + '?callback=__visitorCB&_=' + Date.now();
+      s.onerror = reject;
+      setTimeout(reject, 5000);
+      document.head.appendChild(s);
+    });
+    return;
+  } catch(e) {
+    // both methods failed
+    if(badge) badge.style.display = 'none';
+    console.warn('[Visitor counter] Failed to connect:', e?.message || e);
+  }
+}
+
 // ===== INIT =====
 renderGlossary();
 renderLaws();
 renderSentences();
 renderFlashcard();
+initVisitorCounter();
 </script>
 </body>
 </html>
